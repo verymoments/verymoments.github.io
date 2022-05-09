@@ -1819,7 +1819,7 @@ pre .javascript .function {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #f620d2;
+  background: #ff8711;
 }
 .links-of-blogroll {
   font-size: 13px;
@@ -3116,4 +3116,7 @@ pre .javascript .function {
   .pagination {
     margin: 8px 0 0;
   }
+}
+body {
+  background: url("https://api.uixsj.cn/bing/bing.php");
 }

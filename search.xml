@@ -3,30 +3,30 @@
   <entry>
     <title>BIOS&amp;UEFI启动流程</title>
     <url>/2022/05/09/BIOS-UEFI%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/</url>
-    <content><![CDATA[<h1 id="基础知识"><a href="#基础知识" class="headerlink" title="基础知识"></a>基础知识</h1><h2 id="MBR"><a href="#MBR" class="headerlink" title="MBR"></a>MBR</h2><p><em><strong>主引导记录</strong></em>（Master Boot Record，缩写：MBR），又叫做主引导扇区，是计算机开机后访问硬盘时所必须要读取的首个扇区，它在硬盘上的三维地址为（柱面，磁头，扇区）＝（0，0，1）。在深入讨论主引导扇区内部结构的时候，有时也将其开头的446字节内容特指为“主引导记录”（MBR），其后是4个16字节的“磁盘分区表”（DPT），以及2字节的结束标志（55AA）。因此，在使用“主引导记录”（MBR）这个术语的时候，需要根据具体情况判断其到底是指整个主引导扇区，还是主引导扇区的前446字节。</p>
+    <content><![CDATA[<h1><span id="基础知识">基础知识</span></h1><h2><span id="mbr">MBR</span></h2><p><em><strong>主引导记录</strong></em>（Master Boot Record，缩写：MBR），又叫做主引导扇区，是计算机开机后访问硬盘时所必须要读取的首个扇区，它在硬盘上的三维地址为（柱面，磁头，扇区）＝（0，0，1）。在深入讨论主引导扇区内部结构的时候，有时也将其开头的446字节内容特指为“主引导记录”（MBR），其后是4个16字节的“磁盘分区表”（DPT），以及2字节的结束标志（55AA）。因此，在使用“主引导记录”（MBR）这个术语的时候，需要根据具体情况判断其到底是指整个主引导扇区，还是主引导扇区的前446字节。</p>
 <p>主引导扇区记录着硬盘本身的相关信息以及硬盘各个分区的大小及位置信息，是数据信息的重要入口。如果它受到破坏，硬盘上的基本数据结构信息将会丢失，需要用繁琐的方式试探性的重建数据结构信息后才可能重新访问原先的数据。主引导扇区内的信息可以通过任何一种基于某种操作系统的分区工具软件写入，但和某种操作系统没有特定的关系，即只要创建了有效的主引导记录就可以引导任意一种操作系统（操作系统是创建在高级格式化的硬盘分区之上，是和一定的文件系统相联系的）。</p>
 <p>对于硬盘而言，一个扇区可能的字节数为128×2n（n&#x3D;0,1,2,3）。大多情况下，取n&#x3D;2，即一个扇区（sector）的大小为512字节</p>
 <span id="more"></span>
 
-<h3 id="启动代码"><a href="#启动代码" class="headerlink" title="启动代码"></a>启动代码</h3><p>主引导记录最开头是第一阶段引导代码。其中的硬盘引导程序的主要作用是检查分区表是否正确并且在系统硬件完成自检以后将控制权交给硬盘上的引导程序（如GNU GRUB）。它不依赖任何操作系统，而且启动代码也是可以改变的，从而能够实现多系统引导。</p>
-<h3 id="硬盘分区表"><a href="#硬盘分区表" class="headerlink" title="硬盘分区表"></a>硬盘分区表</h3><p>硬盘分区表占据主引导扇区的64个字节（偏移01BEH–偏移01FDH），可以对<em><strong>四个分区</strong></em>的信息进行描述，其中每个分区的信息占据16个字节</p>
-<h3 id="主引导扇区的读取流程"><a href="#主引导扇区的读取流程" class="headerlink" title="主引导扇区的读取流程"></a>主引导扇区的读取流程</h3><ol>
+<h3><span id="启动代码">启动代码</span></h3><p>主引导记录最开头是第一阶段引导代码。其中的硬盘引导程序的主要作用是检查分区表是否正确并且在系统硬件完成自检以后将控制权交给硬盘上的引导程序（如GNU GRUB）。它不依赖任何操作系统，而且启动代码也是可以改变的，从而能够实现多系统引导。</p>
+<h3><span id="硬盘分区表">硬盘分区表</span></h3><p>硬盘分区表占据主引导扇区的64个字节（偏移01BEH–偏移01FDH），可以对<em><strong>四个分区</strong></em>的信息进行描述，其中每个分区的信息占据16个字节</p>
+<h3><span id="主引导扇区的读取流程">主引导扇区的读取流程</span></h3><ol>
 <li>BIOS加电自检,BIOS执行内存地址为FFFF:0000H处的跳转指令，跳转到固化在ROM中的自检程序处，对系统硬件（包括内存）进行检查。</li>
 <li>读取主引导记录（MBR）。当BIOS检查到硬件正常并与CMOS中的设置相符后，按照CMOS中对启动设备的设置顺序检测可用的启动设备。BIOS将相应启动设备的第一个扇区（也就是MBR扇区）读入内存地址为0000:7C00H处。</li>
 <li>检查0000:01FEH-0000:01FFH（MBR的结束标志位）是否等于55AAH，若不等于则转去尝试其他启动设备，如果没有启动设备满足要求则显示”NO ROM BASIC”然后死机。</li>
 <li>当检测到有启动设备满足要求后，BIOS将控制权交给相应启动设备。启动设备的MBR将自己复制到0000:0600H处，然后继续执行。</li>
 <li>根据MBR中的引导代码启动引导程序。</li>
 </ol>
-<h2 id="GPT"><a href="#GPT" class="headerlink" title="GPT"></a>GPT</h2><p>GUID Partition Table，缩写：GPT,全局唯一表示分区表，是一个实体硬盘的分区表的结构布局的标准。它是可扩展固件接口（UEFI）标准（被Intel用于替代个人计算机的BIOS）的一部分，被用于替代BIOS系统中的一32bits来存储逻辑块地址和大小信息的主引导记录（MBR）分区表。对于那些扇区为512字节的磁盘，MBR分区表不支持容量大于2.2TB（2.2×1012字节）的分区，然而，一些硬盘制造商（诸如希捷和西部数据）注意到这个局限性，并且将他们的容量较大的磁盘升级到4KB的扇区，这意味着MBR的有效容量上限提升到16 TiB。 与MBR分区的磁盘不同，至关重要的平台操作数据位于分区，而不是位于非分区或隐藏扇区。另外，GPT分区磁盘有备份分区表来提高分区数据结构的完整性。在UEFI系统上，通常是通过ESP分区中的EFI应用程序文件启动GPT硬盘上的操作系统，而不是活动主分区上的引导程序。</p>
-<h3 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h3><p>在MBR硬盘中，分区信息直接存储于主引导记录（MBR）中（主引导记录中还存储着系统的引导程序）。但在GPT硬盘中，分区表的位置信息储存在GPT头中。但出于兼容性考虑，硬盘的第一个扇区仍然用作MBR，之后才是GPT头。 跟现代的MBR一样，GPT也使用逻辑区块地址（LBA）取代了早期的CHS寻址方式。传统MBR信息存储于LBA 0，GPT头存储于LBA 1，接下来才是分区表本身。64位Windows操作系统使用16,384字节（或32扇区）作为GPT分区表，接下来的LBA 34是硬盘上第一个分区的开始。</p>
+<h2><span id="gpt">GPT</span></h2><p>GUID Partition Table，缩写：GPT,全局唯一表示分区表，是一个实体硬盘的分区表的结构布局的标准。它是可扩展固件接口（UEFI）标准（被Intel用于替代个人计算机的BIOS）的一部分，被用于替代BIOS系统中的一32bits来存储逻辑块地址和大小信息的主引导记录（MBR）分区表。对于那些扇区为512字节的磁盘，MBR分区表不支持容量大于2.2TB（2.2×1012字节）的分区，然而，一些硬盘制造商（诸如希捷和西部数据）注意到这个局限性，并且将他们的容量较大的磁盘升级到4KB的扇区，这意味着MBR的有效容量上限提升到16 TiB。 与MBR分区的磁盘不同，至关重要的平台操作数据位于分区，而不是位于非分区或隐藏扇区。另外，GPT分区磁盘有备份分区表来提高分区数据结构的完整性。在UEFI系统上，通常是通过ESP分区中的EFI应用程序文件启动GPT硬盘上的操作系统，而不是活动主分区上的引导程序。</p>
+<h3><span id="特点">特点</span></h3><p>在MBR硬盘中，分区信息直接存储于主引导记录（MBR）中（主引导记录中还存储着系统的引导程序）。但在GPT硬盘中，分区表的位置信息储存在GPT头中。但出于兼容性考虑，硬盘的第一个扇区仍然用作MBR，之后才是GPT头。 跟现代的MBR一样，GPT也使用逻辑区块地址（LBA）取代了早期的CHS寻址方式。传统MBR信息存储于LBA 0，GPT头存储于LBA 1，接下来才是分区表本身。64位Windows操作系统使用16,384字节（或32扇区）作为GPT分区表，接下来的LBA 34是硬盘上第一个分区的开始。</p>
 <p><em><strong>为了减少分区表损坏的风险，GPT在硬盘最后保存了一份分区表的副本。</strong></em></p>
-<h3 id="传统的MBR"><a href="#传统的MBR" class="headerlink" title="传统的MBR"></a>传统的MBR</h3><p>在GPT分区表的最开头，出于兼容性考虑仍然存储了一份传统的MBR，用来防止不支持GPT的硬盘管理工具错误识别并破坏硬盘中的数据，这个MBR也叫做保护MBR。在支持从GPT启动的操作系统中，这里也用于存储第一阶段的启动代码。在这个MBR中，只有一个标识为0xEE的分区，以此来表示这块硬盘使用GPT分区表。不能识别GPT硬盘的操作系统通常会识别出一个未知类型的分区，并且拒绝对硬盘进行操作，除非用户特别要求删除这个分区。这就避免了意外删除分区的危险。另外，能够识别GPT分区表的操作系统会检查保护MBR中的分区表，如果分区类型不是0xEE或者MBR分区表中有多个项，也会拒绝对硬盘进行操作。</p>
+<h3><span id="传统的mbr">传统的MBR</span></h3><p>在GPT分区表的最开头，出于兼容性考虑仍然存储了一份传统的MBR，用来防止不支持GPT的硬盘管理工具错误识别并破坏硬盘中的数据，这个MBR也叫做保护MBR。在支持从GPT启动的操作系统中，这里也用于存储第一阶段的启动代码。在这个MBR中，只有一个标识为0xEE的分区，以此来表示这块硬盘使用GPT分区表。不能识别GPT硬盘的操作系统通常会识别出一个未知类型的分区，并且拒绝对硬盘进行操作，除非用户特别要求删除这个分区。这就避免了意外删除分区的危险。另外，能够识别GPT分区表的操作系统会检查保护MBR中的分区表，如果分区类型不是0xEE或者MBR分区表中有多个项，也会拒绝对硬盘进行操作。</p>
 <p>在使用MBR&#x2F;GPT混合分区表的硬盘中，这部分存储了GPT分区表的一部分分区（通常是前四个分区），可以使不支持从GPT启动的操作系统从这个MBR启动，启动后只能操作MBR分区表中的分区。如Boot Camp就是使用这种方式启动Windows</p>
-<h3 id="分区表头（LBA-1）"><a href="#分区表头（LBA-1）" class="headerlink" title="分区表头（LBA 1）"></a>分区表头（LBA 1）</h3><p>分区表头定义了硬盘的可用空间以及组成分区表的项的大小和数量。</p>
+<h3><span id="分区表头lba-1">分区表头（LBA 1）</span></h3><p>分区表头定义了硬盘的可用空间以及组成分区表的项的大小和数量。</p>
 <p>分区表头还记录了这块硬盘的GUID，记录了分区表头本身的位置和大小（位置总是在LBA1）以及备份分区表头和分区表的位置和大小（在硬盘的最后）。它还储存着它本身和分区表的CRC32校验。固件、引导程序和操作系统在启动时可以根据这个校验值来判断分区表是否出错，如果出错了，可以使用软件从硬盘最后的备份GPT中恢复整个分区表，如果备份GPT也校验错误，硬盘将不可使用。所以GPT硬盘的分区表不可以直接使用16进制编辑器修改。</p>
 <p><em><strong>主分区表和备份分区表的头分别位于硬盘的第二个扇区（LBA1）以及硬盘的最后一个扇区。备份分区表头中的信息是关于备份分区表的。</strong></em></p>
-<h3 id="分区表项（LBA-2–33）"><a href="#分区表项（LBA-2–33）" class="headerlink" title="分区表项（LBA 2–33）"></a>分区表项（LBA 2–33）</h3><p>GPT分区表使用简单而直接的方式表示分区。一个分区表项的前16字节是分区类型GUID。例如，EFI系统分区的GUID类型是{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}。接下来的16字节是该分区唯一的GUID（这个GUID指的是该分区本身，而之前的GUID指的是该分区的类型）。再接下来是分区起始和末尾的64位LBA编号，以及分区的名字和属性。</p>
-<h1 id="BIOS启动流程"><a href="#BIOS启动流程" class="headerlink" title="BIOS启动流程"></a>BIOS启动流程</h1><ol>
+<h3><span id="分区表项lba-233">分区表项（LBA 2–33）</span></h3><p>GPT分区表使用简单而直接的方式表示分区。一个分区表项的前16字节是分区类型GUID。例如，EFI系统分区的GUID类型是{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}。接下来的16字节是该分区唯一的GUID（这个GUID指的是该分区本身，而之前的GUID指的是该分区的类型）。再接下来是分区起始和末尾的64位LBA编号，以及分区的名字和属性。</p>
+<h1><span id="bios启动流程">BIOS启动流程</span></h1><ol>
 <li>System switched on, the power-on self-test (POST) is executed.</li>
 <li>After POST, BIOS initializes the necessary system hardware for booting (disk, keyboard controllers etc.).</li>
 <li>BIOS launches the first 440 bytes (the Master Boot Record bootstrap code area) of the first disk in the BIOS disk order.</li>
@@ -39,7 +39,7 @@
 <li>The actual boot loader is launched.</li>
 <li>The boot loader then loads an operating system by either chain-loading or directly loading the operating system kernel.</li>
 </ol>
-<h1 id="UEFI启动流程"><a href="#UEFI启动流程" class="headerlink" title="UEFI启动流程"></a>UEFI启动流程</h1><ol>
+<h1><span id="uefi启动流程">UEFI启动流程</span></h1><ol>
 <li><p>System switched on, the power-on self-test (POST) is executed.</p>
 </li>
 <li><p>After POST, UEFI initializes the hardware required for booting (disk, keyboard controllers etc.).</p>
@@ -59,7 +59,7 @@
 </ul>
 </li>
 </ol>
-<h1 id="GRUB2启动流程"><a href="#GRUB2启动流程" class="headerlink" title="GRUB2启动流程"></a>GRUB2启动流程</h1><h2 id="BIOS中的启动流程"><a href="#BIOS中的启动流程" class="headerlink" title="BIOS中的启动流程"></a>BIOS中的启动流程</h2><ol>
+<h1><span id="grub2启动流程">GRUB2启动流程</span></h1><h2><span id="bios中的启动流程">BIOS中的启动流程</span></h2><ol>
 <li>BIOS启动</li>
 <li>执行MBR分区代码boot.img、core.img</li>
 <li>设置”prefix root cmdpath”环境变量</li>
@@ -67,7 +67,7 @@
 <li>执行”normal $prefix&#x2F;grub.cfg”命令</li>
 <li>根据菜单内容引导内核启动</li>
 </ol>
-<h2 id="UEFI中的启动流程"><a href="#UEFI中的启动流程" class="headerlink" title="UEFI中的启动流程"></a>UEFI中的启动流程</h2><ol>
+<h2><span id="uefi中的启动流程">UEFI中的启动流程</span></h2><ol>
 <li><p>UEFI启动</p>
 </li>
 <li><p>执行ESP(EFI System Partition)分区中的UEFI应用（BOOTX64.EFI）</p>
@@ -95,7 +95,7 @@
   <entry>
     <title>mkisofs 制作grub2可引导的ISO文件</title>
     <url>/2022/05/09/mkisofs-%E5%88%B6%E4%BD%9Cgrub2%E5%8F%AF%E5%BC%95%E5%AF%BC%E7%9A%84ISO%E6%96%87%E4%BB%B6/</url>
-    <content><![CDATA[<h2 id="从头开始制作GRUB2可引导光盘"><a href="#从头开始制作GRUB2可引导光盘" class="headerlink" title="从头开始制作GRUB2可引导光盘"></a>从头开始制作GRUB2可引导光盘</h2><ol>
+    <content><![CDATA[<h2><span id="从头开始制作grub2可引导光盘">从头开始制作GRUB2可引导光盘</span></h2><ol>
 <li><p>一般情况下GRUB2的模块文件位于&#x2F;usr&#x2F;lib&#x2F;grub&#x2F;i386-pc目录下，下面先拷贝模块</p>
 <blockquote>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ mkdir -pv /tmp/iso/boot/grub/</span><br><span class="line">$ cp /usr/lib/grub/i386-pc/ /tmp/iso/boot/grub/ -R</span><br><span class="line"></span><br></pre></td></tr></table></figure></blockquote>
