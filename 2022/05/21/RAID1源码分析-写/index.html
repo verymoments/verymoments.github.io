@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="MD," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="源码分析基于4.19.22.0 raid1_write_request该函数为请求处理，由MD模块md_make_request下发请求调用raid1_make_request处理，在处理写请求之前还需要调用md_write_start来等待超级块更新，更新完之后调用raid1_write_request 处理写请求 12345678910111213141516if (mddev_is_clus">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RAID1源码分析~写.md">
+<meta property="og:url" content="http://example.com/2022/05/21/RAID1%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90-%E5%86%99/index.html">
+<meta property="og:site_name" content="Blog">
+<meta property="og:description" content="源码分析基于4.19.22.0 raid1_write_request该函数为请求处理，由MD模块md_make_request下发请求调用raid1_make_request处理，在处理写请求之前还需要调用md_write_start来等待超级块更新，更新完之后调用raid1_write_request 处理写请求 12345678910111213141516if (mddev_is_clus">
+<meta property="og:locale">
+<meta property="article:published_time" content="2022-05-21T08:50:01.000Z">
+<meta property="article:modified_time" content="2022-05-21T08:53:03.029Z">
+<meta property="article:author" content="Verymoment">
+<meta property="article:tag" content="MD">
+<meta name="twitter:card" content="summary">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":true,"scrollpercent":true,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://example.com/2022/05/21/RAID1源码分析-写/"/>
+
+
+
+
+
+  <title>RAID1源码分析~写.md | Blog</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />
+            
+            搜索
+          </a>
+        </li>
+      
+    </ul>
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/05/21/RAID1%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90-%E5%86%99/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/uploads/blog.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">RAID1源码分析~写.md</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2022-05-21T16:50:01+08:00">
+                2022-05-21
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i>
+            <span class="busuanzi-value" id="busuanzi_value_page_pv" ></span>
+            </span>
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.9k 字
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon"> 
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  9 分钟
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1><span id="源码分析">源码分析</span></h1><p>基于4.19.22.0</p>
+<h2><span id="raid1_write_request">raid1_write_request</span></h2><p>该函数为请求处理，由MD模块<code>md_make_request</code>下发请求调用<code>raid1_make_request</code>处理，在处理写请求之前还需要调用<code>md_write_start</code>来等待超级块更新，更新完之后调用<code>raid1_write_request</code> 处理写请求</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">if (mddev_is_clustered(mddev) &amp;&amp;</span><br><span class="line">     md_cluster_ops-&gt;area_resyncing(mddev, WRITE,</span><br><span class="line">	     bio-&gt;bi_iter.bi_sector, bio_end_sector(bio))) &#123;</span><br><span class="line"></span><br><span class="line">	DEFINE_WAIT(w);</span><br><span class="line">	for (;;) &#123;</span><br><span class="line">		prepare_to_wait(&amp;conf-&gt;wait_barrier,</span><br><span class="line">				&amp;w, TASK_IDLE);</span><br><span class="line">		if (!md_cluster_ops-&gt;area_resyncing(mddev, WRITE,</span><br><span class="line">						bio-&gt;bi_iter.bi_sector,</span><br><span class="line">						bio_end_sector(bio)))</span><br><span class="line">			break;</span><br><span class="line">		schedule();</span><br><span class="line">	&#125;</span><br><span class="line">	finish_wait(&amp;conf-&gt;wait_barrier, &amp;w);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><em>待分析</em></p>
+<span id="more"></span>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * Register the new request and wait if the reconstruction</span><br><span class="line"> * thread has put up a bar for new requests.</span><br><span class="line"> * Continue immediately if no resync is active currently.</span><br><span class="line"> */</span><br><span class="line">wait_barrier(conf, bio-&gt;bi_iter.bi_sector);</span><br></pre></td></tr></table></figure>
+<p>等待阵列同步过程中构造的屏障解除，才能下发写操作</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">r1_bio = alloc_r1bio(mddev, bio);</span><br><span class="line">r1_bio-&gt;sectors = max_write_sectors;</span><br></pre></td></tr></table></figure>
+<p>构造<code>r1_bio</code>结构</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">if (conf-&gt;pending_count &gt;= max_queued_requests) &#123;</span><br><span class="line">	md_wakeup_thread(mddev-&gt;thread);</span><br><span class="line">	raid1_log(mddev, &quot;wait queued&quot;);</span><br><span class="line">	wait_event(conf-&gt;wait_barrier,</span><br><span class="line">		   conf-&gt;pending_count &lt; max_queued_requests);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>下发的写操作大于<code>max_queued_requests</code>,则等待已提交写操作完成知道符合<code>conf-&gt;pending_count &lt; max_queued_requests</code>条件</p>
+<blockquote>
+<p><code>conf-&gt;pending_count</code>在bio加到<code>pending_bio_list</code>时递增，在<code>flush_pending_writes</code>中刷写请求到磁盘是置零</p>
+</blockquote>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line">disks = conf-&gt;raid_disks * 2;</span><br><span class="line">retry_write:</span><br><span class="line">blocked_rdev = NULL;</span><br><span class="line">rcu_read_lock();</span><br><span class="line">max_sectors = r1_bio-&gt;sectors;</span><br><span class="line">for (i = 0;  i &lt; disks; i++) &#123;</span><br><span class="line">	struct md_rdev *rdev = rcu_dereference(conf-&gt;mirrors[i].rdev);</span><br><span class="line">	if (rdev &amp;&amp; unlikely(test_bit(Blocked, &amp;rdev-&gt;flags))) &#123;</span><br><span class="line">		atomic_inc(&amp;rdev-&gt;nr_pending);</span><br><span class="line">		blocked_rdev = rdev;</span><br><span class="line">		break;</span><br><span class="line">	&#125;</span><br><span class="line">	r1_bio-&gt;bios[i] = NULL;</span><br><span class="line">	if (!rdev || test_bit(Faulty, &amp;rdev-&gt;flags)) &#123;</span><br><span class="line">		if (i &lt; conf-&gt;raid_disks)</span><br><span class="line">			set_bit(R1BIO_Degraded, &amp;r1_bio-&gt;state);</span><br><span class="line">		continue;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	atomic_inc(&amp;rdev-&gt;nr_pending);</span><br><span class="line">	if (test_bit(WriteErrorSeen, &amp;rdev-&gt;flags)) &#123;</span><br><span class="line">		sector_t first_bad;</span><br><span class="line">		int bad_sectors;</span><br><span class="line">		int is_bad;</span><br><span class="line"></span><br><span class="line">		is_bad = is_badblock(rdev, r1_bio-&gt;sector, max_sectors,</span><br><span class="line">				     &amp;first_bad, &amp;bad_sectors);</span><br><span class="line">		if (is_bad &lt; 0) &#123;</span><br><span class="line">			/* mustn&#x27;t write here until the bad block is</span><br><span class="line">			 * acknowledged*/</span><br><span class="line">			set_bit(BlockedBadBlocks, &amp;rdev-&gt;flags);</span><br><span class="line">			blocked_rdev = rdev;</span><br><span class="line">			break;</span><br><span class="line">		&#125;</span><br><span class="line">		if (is_bad &amp;&amp; first_bad &lt;= r1_bio-&gt;sector) &#123;</span><br><span class="line">			/* Cannot write here at all */</span><br><span class="line">			bad_sectors -= (r1_bio-&gt;sector - first_bad);</span><br><span class="line">			if (bad_sectors &lt; max_sectors)</span><br><span class="line">				/* mustn&#x27;t write more than bad_sectors</span><br><span class="line">				 * to other devices yet</span><br><span class="line">				 */</span><br><span class="line">				max_sectors = bad_sectors;</span><br><span class="line">			rdev_dec_pending(rdev, mddev);</span><br><span class="line">			/* We don&#x27;t set R1BIO_Degraded as that</span><br><span class="line">			 * only applies if the disk is</span><br><span class="line">			 * missing, so it might be re-added,</span><br><span class="line">			 * and we want to know to recover this</span><br><span class="line">			 * chunk.</span><br><span class="line">			 * In this case the device is here,</span><br><span class="line">			 * and the fact that this chunk is not</span><br><span class="line">			 * in-sync is recorded in the bad</span><br><span class="line">			 * block log</span><br><span class="line">			 */</span><br><span class="line">			continue;</span><br><span class="line">		&#125;</span><br><span class="line">		if (is_bad) &#123;</span><br><span class="line">			int good_sectors = first_bad - r1_bio-&gt;sector;</span><br><span class="line">			if (good_sectors &lt; max_sectors)</span><br><span class="line">				max_sectors = good_sectors;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	r1_bio-&gt;bios[i] = bio;</span><br><span class="line">&#125;</span><br><span class="line">rcu_read_unlock();</span><br></pre></td></tr></table></figure>
+<p>循环遍历阵列，处理阻塞盘及坏块</p>
+<ol>
+<li>如果盘存在并且阻塞了，则跳出循环等待阻塞解除再重新开始循坏</li>
+<li>如果盘不存在或者盘坏了，则设置<code>R1BIO_Degraded</code>后，继续遍历下个盘</li>
+<li>增加盘下发IO计数<code>nr_pending</code></li>
+<li>根据<code>WriteErrorSeen</code>标记进行坏块处理，避免对坏块进行读写<ol>
+<li>如果存在未知坏块，则设置<code>BlockedBadBlocks</code>标记，跳出循坏阻塞，等待磁盘修复后阻塞解除再重新开始循环</li>
+<li>存在已知坏块且坏块起始位置小于写入位置，则计算出实际可写sectors（其他盘写sectors不能超过这块盘的坏块）</li>
+<li>存在已知坏块且坏块起始位置大于写入位置，则计算出实际可写sectors（<code>good_sectors = first_bad - r1_bio-&gt;sector</code>）</li>
+</ol>
+</li>
+<li><code>bios[]</code>指向实际下发的<code>bio</code></li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">if (unlikely(blocked_rdev)) &#123;</span><br><span class="line">	/* Wait for this device to become unblocked */</span><br><span class="line">	int j;</span><br><span class="line"></span><br><span class="line">	for (j = 0; j &lt; i; j++)</span><br><span class="line">		if (r1_bio-&gt;bios[j])</span><br><span class="line">			rdev_dec_pending(conf-&gt;mirrors[j].rdev, mddev);</span><br><span class="line">	r1_bio-&gt;state = 0;</span><br><span class="line">	allow_barrier(conf, bio-&gt;bi_iter.bi_sector);</span><br><span class="line">	raid1_log(mddev, &quot;wait rdev %d blocked&quot;, blocked_rdev-&gt;raid_disk);</span><br><span class="line">	md_wait_for_blocked_rdev(blocked_rdev, mddev);</span><br><span class="line">	wait_barrier(conf, bio-&gt;bi_iter.bi_sector);</span><br><span class="line">	goto retry_write;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果存在阻塞盘，则等待阻塞解除后继续遍历</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">if (max_sectors &lt; bio_sectors(bio)) &#123;</span><br><span class="line">	struct bio *split = bio_split(bio, max_sectors,</span><br><span class="line">				      GFP_NOIO, &amp;conf-&gt;bio_split);</span><br><span class="line">	bio_chain(split, bio);</span><br><span class="line">	generic_make_request(bio);</span><br><span class="line">	bio = split;</span><br><span class="line">	r1_bio-&gt;master_bio = bio;</span><br><span class="line">	r1_bio-&gt;sectors = max_sectors;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果写请求携带的sectors大于<code>max_sectors</code>，对bio进行切分处理</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">atomic_set(&amp;r1_bio-&gt;remaining, 1);</span><br><span class="line">atomic_set(&amp;r1_bio-&gt;behind_remaining, 0);</span><br></pre></td></tr></table></figure>
+<p>未提交请求数<code>remaining</code>、延迟写的未提交的请求数<code>behind_remaining</code></p>
+<blockquote>
+<p>未提交指未下发到盘的驱动队列中，此值在盘BIO构造好之后增加，BIO完成之后调用<code>r1_bio_write_done</code>减少</p>
+</blockquote>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">first_clone = 1;</span><br><span class="line"></span><br><span class="line">for (i = 0; i &lt; disks; i++) &#123;</span><br><span class="line">	struct bio *mbio = NULL;</span><br><span class="line">	if (!r1_bio-&gt;bios[i])</span><br><span class="line">		continue;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">	if (first_clone) &#123;</span><br><span class="line">		/* do behind I/O ?</span><br><span class="line">		 * Not if there are too many, or cannot</span><br><span class="line">		 * allocate memory, or a reader on WriteMostly</span><br><span class="line">		 * is waiting for behind writes to flush */</span><br><span class="line">		if (bitmap &amp;&amp;</span><br><span class="line">		    (atomic_read(&amp;bitmap-&gt;behind_writes)</span><br><span class="line">		     &lt; mddev-&gt;bitmap_info.max_write_behind) &amp;&amp;</span><br><span class="line">		    !waitqueue_active(&amp;bitmap-&gt;behind_wait)) &#123;</span><br><span class="line">			alloc_behind_master_bio(r1_bio, bio);</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		md_bitmap_startwrite(bitmap, r1_bio-&gt;sector, r1_bio-&gt;sectors,</span><br><span class="line">				     test_bit(R1BIO_BehindIO, &amp;r1_bio-&gt;state));</span><br><span class="line">		first_clone = 0;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	if (r1_bio-&gt;behind_master_bio)</span><br><span class="line">		mbio = bio_clone_fast(r1_bio-&gt;behind_master_bio,</span><br><span class="line">				      GFP_NOIO, &amp;mddev-&gt;bio_set);</span><br><span class="line">	else</span><br><span class="line">		mbio = bio_clone_fast(bio, GFP_NOIO, &amp;mddev-&gt;bio_set);</span><br><span class="line"></span><br><span class="line">	if (r1_bio-&gt;behind_master_bio) &#123;</span><br><span class="line">		if (test_bit(WriteMostly, &amp;conf-&gt;mirrors[i].rdev-&gt;flags))</span><br><span class="line">			atomic_inc(&amp;r1_bio-&gt;behind_remaining);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	r1_bio-&gt;bios[i] = mbio;</span><br><span class="line"></span><br><span class="line">	mbio-&gt;bi_iter.bi_sector	= (r1_bio-&gt;sector +</span><br><span class="line">			   conf-&gt;mirrors[i].rdev-&gt;data_offset);</span><br><span class="line">	bio_set_dev(mbio, conf-&gt;mirrors[i].rdev-&gt;bdev);</span><br><span class="line">	mbio-&gt;bi_end_io	= raid1_end_write_request;</span><br><span class="line">	mbio-&gt;bi_opf = bio_op(bio) | (bio-&gt;bi_opf &amp; (REQ_SYNC | REQ_FUA));</span><br><span class="line">	if (test_bit(FailFast, &amp;conf-&gt;mirrors[i].rdev-&gt;flags) &amp;&amp;</span><br><span class="line">	    !test_bit(WriteMostly, &amp;conf-&gt;mirrors[i].rdev-&gt;flags) &amp;&amp;</span><br><span class="line">	    conf-&gt;raid_disks - mddev-&gt;degraded &gt; 1)</span><br><span class="line">		mbio-&gt;bi_opf |= MD_FAILFAST;</span><br><span class="line">	mbio-&gt;bi_private = r1_bio;</span><br><span class="line"></span><br><span class="line">	atomic_inc(&amp;r1_bio-&gt;remaining);</span><br><span class="line"></span><br><span class="line">	if (mddev-&gt;gendisk)</span><br><span class="line">		trace_block_bio_remap(mbio-&gt;bi_disk-&gt;queue,</span><br><span class="line">				      mbio, disk_devt(mddev-&gt;gendisk),</span><br><span class="line">				      r1_bio-&gt;sector);</span><br><span class="line">	/* flush_pending_writes() needs access to the rdev so...*/</span><br><span class="line">	mbio-&gt;bi_disk = (void *)conf-&gt;mirrors[i].rdev;</span><br><span class="line"></span><br><span class="line">	cb = blk_check_plugged(raid1_unplug, mddev, sizeof(*plug));</span><br><span class="line">	if (cb)</span><br><span class="line">		plug = container_of(cb, struct raid1_plug_cb, cb);</span><br><span class="line">	else</span><br><span class="line">		plug = NULL;</span><br><span class="line">	if (plug) &#123;</span><br><span class="line">		bio_list_add(&amp;plug-&gt;pending, mbio);</span><br><span class="line">		plug-&gt;pending_cnt++;</span><br><span class="line">	&#125; else &#123;</span><br><span class="line">		spin_lock_irqsave(&amp;conf-&gt;device_lock, flags);</span><br><span class="line">		bio_list_add(&amp;conf-&gt;pending_bio_list, mbio);</span><br><span class="line">		conf-&gt;pending_count++;</span><br><span class="line">		spin_unlock_irqrestore(&amp;conf-&gt;device_lock, flags);</span><br><span class="line">		md_wakeup_thread(mddev-&gt;thread);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>遍历所有盘的提交BIO</p>
+<ol>
+<li>克隆BIO，如果未设置behind模式，则从上层BIO克隆到<code>bios[]</code>；如果设置了behind模式，则首先复制一份BIO到<code>behind_master_bio</code>，所有的<code>bios[]</code>来自复制的这份<blockquote>
+<p>没有设置behind模式，阵列所有成员盘写命令完成后，这个写请求才算完成，释放上层BIO；如果设置了behind模式且存在<code>WriteMostly</code>盘，那么除<code>WriteMostly</code>外其他盘写完成则认为写请求完成，释放上层BIO；<code>behind_master_bio</code>是阵列所有盘写完之后释放的</p>
+</blockquote>
+</li>
+<li>组装<code>bios[]</code>上的BIO</li>
+<li>增加未提交命令计数<code>remaining</code></li>
+<li>当前线程正在进行BIO的plug，则将当前产生的<code>mbio</code>插入到<code>plug-&gt;pending</code><blockquote>
+<p><code>blk_finish_plug</code>中会对这里BIO进行处理，不用重新唤醒处理线程，提升性能<br>5.当前进程没有plug，则将<code>mbio</code>插入到<code>pending_bio_list</code>上，然后唤醒守护进程处理</p>
+</blockquote>
+</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">r1_bio_write_done(r1_bio);</span><br><span class="line"></span><br><span class="line">/* In case raid1d snuck in to freeze_array */</span><br><span class="line">wake_up(&amp;conf-&gt;wait_barrier);</span><br></pre></td></tr></table></figure>
+<p>判断写完成处理以及唤醒等待写屏障的流程</p>
+<h2><span id="flush_pending_writes">flush_pending_writes</span></h2><p>该函数为写请求下发，由守护进程发起</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">static void flush_pending_writes(struct r1conf *conf)</span><br><span class="line">&#123;</span><br><span class="line">	/* Any writes that have been queued but are awaiting</span><br><span class="line">	 * bitmap updates get flushed here.</span><br><span class="line">	 */</span><br><span class="line">	spin_lock_irq(&amp;conf-&gt;device_lock);</span><br><span class="line"></span><br><span class="line">	if (conf-&gt;pending_bio_list.head) &#123;</span><br><span class="line">		struct blk_plug plug;</span><br><span class="line">		struct bio *bio;</span><br><span class="line"></span><br><span class="line">		bio = bio_list_get(&amp;conf-&gt;pending_bio_list);</span><br><span class="line">		conf-&gt;pending_count = 0;</span><br><span class="line">		spin_unlock_irq(&amp;conf-&gt;device_lock);</span><br><span class="line"></span><br><span class="line">		/*</span><br><span class="line">		 * As this is called in a wait_event() loop (see freeze_array),</span><br><span class="line">		 * current-&gt;state might be TASK_UNINTERRUPTIBLE which will</span><br><span class="line">		 * cause a warning when we prepare to wait again.  As it is</span><br><span class="line">		 * rare that this path is taken, it is perfectly safe to force</span><br><span class="line">		 * us to go around the wait_event() loop again, so the warning</span><br><span class="line">		 * is a false-positive.  Silence the warning by resetting</span><br><span class="line">		 * thread state</span><br><span class="line">		 */</span><br><span class="line">		__set_current_state(TASK_RUNNING);</span><br><span class="line">		blk_start_plug(&amp;plug);</span><br><span class="line">		flush_bio_list(conf, bio);</span><br><span class="line">		blk_finish_plug(&amp;plug);</span><br><span class="line">	&#125; else</span><br><span class="line">		spin_unlock_irq(&amp;conf-&gt;device_lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>pending_bio_list</code>上的所有请求一次性下发到盘，同时<code>pending_count</code>计数清零</li>
+<li><code>blk_finish_plug</code>会处理插入到<code>plug-&gt;pending</code>中的请求</li>
+</ol>
+<h2><span id="raid1_end_write_request">raid1_end_write_request</span></h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">if (behind) &#123;</span><br><span class="line">	if (test_bit(WriteMostly, &amp;rdev-&gt;flags))</span><br><span class="line">		atomic_dec(&amp;r1_bio-&gt;behind_remaining);</span><br><span class="line"></span><br><span class="line">	/*</span><br><span class="line">	 * In behind mode, we ACK the master bio once the I/O</span><br><span class="line">	 * has safely reached all non-writemostly</span><br><span class="line">	 * disks. Setting the Returned bit ensures that this</span><br><span class="line">	 * gets done only once -- we don&#x27;t ever want to return</span><br><span class="line">	 * -EIO here, instead we&#x27;ll wait</span><br><span class="line">	 */</span><br><span class="line">	if (atomic_read(&amp;r1_bio-&gt;behind_remaining) &gt;= (atomic_read(&amp;r1_bio-&gt;remaining)-1) &amp;&amp;</span><br><span class="line">	    test_bit(R1BIO_Uptodate, &amp;r1_bio-&gt;state)) &#123;</span><br><span class="line">		/* Maybe we can return now */</span><br><span class="line">		if (!test_and_set_bit(R1BIO_Returned, &amp;r1_bio-&gt;state)) &#123;</span><br><span class="line">			struct bio *mbio = r1_bio-&gt;master_bio;</span><br><span class="line">			pr_debug(&quot;raid1: behind end write sectors&quot;</span><br><span class="line">				 &quot; %llu-%llu\n&quot;,</span><br><span class="line">				 (unsigned long long) mbio-&gt;bi_iter.bi_sector,</span><br><span class="line">				 (unsigned long long) bio_end_sector(mbio) - 1);</span><br><span class="line">			call_bio_endio(r1_bio);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>behind模式下判断所有非<code>WriteMostly</code>盘完成命令后通知上层写请求结束<code>call_bio_endio</code></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * Let&#x27;s see if all mirrored write operations have finished</span><br><span class="line"> * already.</span><br><span class="line"> */</span><br><span class="line">r1_bio_write_done(r1_bio);</span><br><span class="line"></span><br><span class="line">if (to_put)</span><br><span class="line">	bio_put(to_put);</span><br></pre></td></tr></table></figure>
+<p>正常模式或是behind模式下所有写请求完成后的处理（释放相关资源、bitmap处理）</p>
+<h1><span id="总体流程">总体流程</span></h1><p>参考<a target="_blank" rel="noopener" href="https://www.cnblogs.com/fangpei/p/4676395.html">fangpei</a>作者总结</p>
+<h1><span id="参考">参考</span></h1><ul>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/fangpei/p/4676395.html">https://www.cnblogs.com/fangpei/p/4676395.html</a></li>
+</ul>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/MD/" rel="tag"># MD</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2022/05/21/RAID1%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90-%E8%AF%BB/" rel="next" title="RAID1源码分析~读.md">
+                <i class="fa fa-chevron-left"></i> RAID1源码分析~读.md
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/uploads/blog.jpg"
+                alt="" />
+            
+              <p class="site-author-name" itemprop="name"></p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/%7C%7C%20archive">
+              
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">3</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">1.</span> <span class="nav-text">源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link"><span class="nav-number">1.1.</span> <span class="nav-text">raid1_write_request</span></a></li><li class="nav-item nav-level-2"><a class="nav-link"><span class="nav-number">1.2.</span> <span class="nav-text">flush_pending_writes</span></a></li><li class="nav-item nav-level-2"><a class="nav-link"><span class="nav-number">1.3.</span> <span class="nav-text">raid1_end_write_request</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">2.</span> <span class="nav-text">总体流程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+        <div class="back-to-top">
+          <i class="fa fa-arrow-up"></i>
+          
+            <span id="scrollpercent"><span>0</span>%</span>
+          
+        </div>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Verymoment</span>
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    
+      <span class="post-meta-item-text">Site words total count&#58;</span>
+    
+    <span title="Site words total count">10k</span>
+  
+</div>
+
+
+
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.4</div>
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="BIOS/UEFI," />
+  <meta name="keywords" content="MD," />
 
 
 
@@ -79,17 +79,17 @@
 
 
 
-<meta name="description" content="基础知识MBR主引导记录（Master Boot Record，缩写：MBR），又叫做主引导扇区，是计算机开机后访问硬盘时所必须要读取的首个扇区，它在硬盘上的三维地址为（柱面，磁头，扇区）＝（0，0，1）。在深入讨论主引导扇区内部结构的时候，有时也将其开头的446字节内容特指为“主引导记录”（MBR），其后是4个16字节的“磁盘分区表”（DPT），以及2字节的结束标志（55AA）。因此，在使用“主">
+<meta name="description" content="源码分析基于4.19.220 读操作比较简单，我们主要分析一下读目标盘的选择算法read_balance的实现 read_balance目标盘选择的依据如下：  首先选择上次操作结束位置是本次操作的起点; 如果不存在这样的盘，如果盘阵中有SSD盘或是有从未访问过得盘那么选择这块盘； 否则选择上次操作结束位置离 本次起始位置最近的盘。 如果盘阵中都是WriteMostly盘，则选择遍历中的第一块Wr">
 <meta property="og:type" content="article">
-<meta property="og:title" content="BIOS&amp;UEFI启动流程">
-<meta property="og:url" content="http://example.com/2022/05/09/BIOS-UEFI%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/index.html">
+<meta property="og:title" content="RAID1源码分析~读.md">
+<meta property="og:url" content="http://example.com/2022/05/21/RAID1%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90-%E8%AF%BB/index.html">
 <meta property="og:site_name" content="Blog">
-<meta property="og:description" content="基础知识MBR主引导记录（Master Boot Record，缩写：MBR），又叫做主引导扇区，是计算机开机后访问硬盘时所必须要读取的首个扇区，它在硬盘上的三维地址为（柱面，磁头，扇区）＝（0，0，1）。在深入讨论主引导扇区内部结构的时候，有时也将其开头的446字节内容特指为“主引导记录”（MBR），其后是4个16字节的“磁盘分区表”（DPT），以及2字节的结束标志（55AA）。因此，在使用“主">
+<meta property="og:description" content="源码分析基于4.19.220 读操作比较简单，我们主要分析一下读目标盘的选择算法read_balance的实现 read_balance目标盘选择的依据如下：  首先选择上次操作结束位置是本次操作的起点; 如果不存在这样的盘，如果盘阵中有SSD盘或是有从未访问过得盘那么选择这块盘； 否则选择上次操作结束位置离 本次起始位置最近的盘。 如果盘阵中都是WriteMostly盘，则选择遍历中的第一块Wr">
 <meta property="og:locale">
-<meta property="article:published_time" content="2022-05-09T05:35:32.000Z">
-<meta property="article:modified_time" content="2022-05-09T05:43:37.823Z">
+<meta property="article:published_time" content="2022-05-21T08:49:52.000Z">
+<meta property="article:modified_time" content="2022-05-21T08:53:15.911Z">
 <meta property="article:author" content="Verymoment">
-<meta property="article:tag" content="BIOS&#x2F;UEFI">
+<meta property="article:tag" content="MD">
 <meta name="twitter:card" content="summary">
 
 
@@ -120,13 +120,13 @@
 
 
 
-  <link rel="canonical" href="http://example.com/2022/05/09/BIOS-UEFI启动流程/"/>
+  <link rel="canonical" href="http://example.com/2022/05/21/RAID1源码分析-读/"/>
 
 
 
 
 
-  <title>BIOS&UEFI启动流程 | Blog</title>
+  <title>RAID1源码分析~读.md | Blog</title>
   
 
 
@@ -287,7 +287,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2022/05/09/BIOS-UEFI%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/05/21/RAID1%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90-%E8%AF%BB/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="">
@@ -304,7 +304,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">BIOS&UEFI启动流程</h1>
+          <h1 class="post-title" itemprop="name headline">RAID1源码分析~读.md</h1>
         
 
         <div class="post-meta">
@@ -316,8 +316,8 @@
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2022-05-09T13:35:32+08:00">
-                2022-05-09
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2022-05-21T16:49:52+08:00">
+                2022-05-21
               </time>
             
 
@@ -339,8 +339,8 @@
               
               
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/BIOS/" itemprop="url" rel="index">
-                    <span itemprop="name">BIOS</span>
+                  <a href="/categories/Linux/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux</span>
                   </a>
                 </span>
 
@@ -375,7 +375,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  2.6k 字
+                  1.4k 字
                 </span>
               
 
@@ -391,7 +391,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  10 分钟
+                  6 分钟
                 </span>
               
             </div>
@@ -412,87 +412,55 @@
       
 
       
-        <h1><span id="基础知识">基础知识</span></h1><h2><span id="mbr">MBR</span></h2><p><em><strong>主引导记录</strong></em>（Master Boot Record，缩写：MBR），又叫做主引导扇区，是计算机开机后访问硬盘时所必须要读取的首个扇区，它在硬盘上的三维地址为（柱面，磁头，扇区）＝（0，0，1）。在深入讨论主引导扇区内部结构的时候，有时也将其开头的446字节内容特指为“主引导记录”（MBR），其后是4个16字节的“磁盘分区表”（DPT），以及2字节的结束标志（55AA）。因此，在使用“主引导记录”（MBR）这个术语的时候，需要根据具体情况判断其到底是指整个主引导扇区，还是主引导扇区的前446字节。</p>
-<p>主引导扇区记录着硬盘本身的相关信息以及硬盘各个分区的大小及位置信息，是数据信息的重要入口。如果它受到破坏，硬盘上的基本数据结构信息将会丢失，需要用繁琐的方式试探性的重建数据结构信息后才可能重新访问原先的数据。主引导扇区内的信息可以通过任何一种基于某种操作系统的分区工具软件写入，但和某种操作系统没有特定的关系，即只要创建了有效的主引导记录就可以引导任意一种操作系统（操作系统是创建在高级格式化的硬盘分区之上，是和一定的文件系统相联系的）。</p>
-<p>对于硬盘而言，一个扇区可能的字节数为128×2n（n&#x3D;0,1,2,3）。大多情况下，取n&#x3D;2，即一个扇区（sector）的大小为512字节</p>
+        <h1><span id="源码分析">源码分析</span></h1><p>基于4.19.220</p>
+<p>读操作比较简单，我们主要分析一下读目标盘的选择算法<code>read_balance</code>的实现</p>
+<h2><span id="read_balance">read_balance</span></h2><p>目标盘选择的依据如下：</p>
+<ol>
+<li>首先选择上次操作结束位置是本次操作的起点;</li>
+<li>如果不存在这样的盘，如果盘阵中有SSD盘或是有从未访问过得盘那么选择这块盘；</li>
+<li>否则选择上次操作结束位置离 本次起始位置最近的盘。</li>
+<li>如果盘阵中都是<code>WriteMostly</code>盘，则选择遍历中的第一块<code>WriteMostly</code>盘。</li>
+</ol>
 <span id="more"></span>
 
-<h3><span id="启动代码">启动代码</span></h3><p>主引导记录最开头是第一阶段引导代码。其中的硬盘引导程序的主要作用是检查分区表是否正确并且在系统硬件完成自检以后将控制权交给硬盘上的引导程序（如GNU GRUB）。它不依赖任何操作系统，而且启动代码也是可以改变的，从而能够实现多系统引导。</p>
-<h3><span id="硬盘分区表">硬盘分区表</span></h3><p>硬盘分区表占据主引导扇区的64个字节（偏移01BEH–偏移01FDH），可以对<em><strong>四个分区</strong></em>的信息进行描述，其中每个分区的信息占据16个字节</p>
-<h3><span id="主引导扇区的读取流程">主引导扇区的读取流程</span></h3><ol>
-<li>BIOS加电自检,BIOS执行内存地址为FFFF:0000H处的跳转指令，跳转到固化在ROM中的自检程序处，对系统硬件（包括内存）进行检查。</li>
-<li>读取主引导记录（MBR）。当BIOS检查到硬件正常并与CMOS中的设置相符后，按照CMOS中对启动设备的设置顺序检测可用的启动设备。BIOS将相应启动设备的第一个扇区（也就是MBR扇区）读入内存地址为0000:7C00H处。</li>
-<li>检查0000:01FEH-0000:01FFH（MBR的结束标志位）是否等于55AAH，若不等于则转去尝试其他启动设备，如果没有启动设备满足要求则显示”NO ROM BASIC”然后死机。</li>
-<li>当检测到有启动设备满足要求后，BIOS将控制权交给相应启动设备。启动设备的MBR将自己复制到0000:0600H处，然后继续执行。</li>
-<li>根据MBR中的引导代码启动引导程序。</li>
-</ol>
-<h2><span id="gpt">GPT</span></h2><p>GUID Partition Table，缩写：GPT,全局唯一表示分区表，是一个实体硬盘的分区表的结构布局的标准。它是可扩展固件接口（UEFI）标准（被Intel用于替代个人计算机的BIOS）的一部分，被用于替代BIOS系统中的一32bits来存储逻辑块地址和大小信息的主引导记录（MBR）分区表。对于那些扇区为512字节的磁盘，MBR分区表不支持容量大于2.2TB（2.2×1012字节）的分区，然而，一些硬盘制造商（诸如希捷和西部数据）注意到这个局限性，并且将他们的容量较大的磁盘升级到4KB的扇区，这意味着MBR的有效容量上限提升到16 TiB。 与MBR分区的磁盘不同，至关重要的平台操作数据位于分区，而不是位于非分区或隐藏扇区。另外，GPT分区磁盘有备份分区表来提高分区数据结构的完整性。在UEFI系统上，通常是通过ESP分区中的EFI应用程序文件启动GPT硬盘上的操作系统，而不是活动主分区上的引导程序。</p>
-<h3><span id="特点">特点</span></h3><p>在MBR硬盘中，分区信息直接存储于主引导记录（MBR）中（主引导记录中还存储着系统的引导程序）。但在GPT硬盘中，分区表的位置信息储存在GPT头中。但出于兼容性考虑，硬盘的第一个扇区仍然用作MBR，之后才是GPT头。 跟现代的MBR一样，GPT也使用逻辑区块地址（LBA）取代了早期的CHS寻址方式。传统MBR信息存储于LBA 0，GPT头存储于LBA 1，接下来才是分区表本身。64位Windows操作系统使用16,384字节（或32扇区）作为GPT分区表，接下来的LBA 34是硬盘上第一个分区的开始。</p>
-<p><em><strong>为了减少分区表损坏的风险，GPT在硬盘最后保存了一份分区表的副本。</strong></em></p>
-<h3><span id="传统的mbr">传统的MBR</span></h3><p>在GPT分区表的最开头，出于兼容性考虑仍然存储了一份传统的MBR，用来防止不支持GPT的硬盘管理工具错误识别并破坏硬盘中的数据，这个MBR也叫做保护MBR。在支持从GPT启动的操作系统中，这里也用于存储第一阶段的启动代码。在这个MBR中，只有一个标识为0xEE的分区，以此来表示这块硬盘使用GPT分区表。不能识别GPT硬盘的操作系统通常会识别出一个未知类型的分区，并且拒绝对硬盘进行操作，除非用户特别要求删除这个分区。这就避免了意外删除分区的危险。另外，能够识别GPT分区表的操作系统会检查保护MBR中的分区表，如果分区类型不是0xEE或者MBR分区表中有多个项，也会拒绝对硬盘进行操作。</p>
-<p>在使用MBR&#x2F;GPT混合分区表的硬盘中，这部分存储了GPT分区表的一部分分区（通常是前四个分区），可以使不支持从GPT启动的操作系统从这个MBR启动，启动后只能操作MBR分区表中的分区。如Boot Camp就是使用这种方式启动Windows</p>
-<h3><span id="分区表头lba-1">分区表头（LBA 1）</span></h3><p>分区表头定义了硬盘的可用空间以及组成分区表的项的大小和数量。</p>
-<p>分区表头还记录了这块硬盘的GUID，记录了分区表头本身的位置和大小（位置总是在LBA1）以及备份分区表头和分区表的位置和大小（在硬盘的最后）。它还储存着它本身和分区表的CRC32校验。固件、引导程序和操作系统在启动时可以根据这个校验值来判断分区表是否出错，如果出错了，可以使用软件从硬盘最后的备份GPT中恢复整个分区表，如果备份GPT也校验错误，硬盘将不可使用。所以GPT硬盘的分区表不可以直接使用16进制编辑器修改。</p>
-<p><em><strong>主分区表和备份分区表的头分别位于硬盘的第二个扇区（LBA1）以及硬盘的最后一个扇区。备份分区表头中的信息是关于备份分区表的。</strong></em></p>
-<h3><span id="分区表项lba-233">分区表项（LBA 2–33）</span></h3><p>GPT分区表使用简单而直接的方式表示分区。一个分区表项的前16字节是分区类型GUID。例如，EFI系统分区的GUID类型是{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}。接下来的16字节是该分区唯一的GUID（这个GUID指的是该分区本身，而之前的GUID指的是该分区的类型）。再接下来是分区起始和末尾的64位LBA编号，以及分区的名字和属性。</p>
-<h1><span id="bios启动流程">BIOS启动流程</span></h1><ol>
-<li>System switched on, the power-on self-test (POST) is executed.</li>
-<li>After POST, BIOS initializes the necessary system hardware for booting (disk, keyboard controllers etc.).</li>
-<li>BIOS launches the first 440 bytes (the Master Boot Record bootstrap code area) of the first disk in the BIOS disk order.</li>
-<li>The boot loader’s first stage in the MBR boot code then launches its second stage code (if any) from either:<ul>
-<li>next disk sectors after the MBR, i.e. the so called post-MBR gap (only on a MBR partition table).</li>
-<li>a partition’s or a partitionless disk’s volume boot record (VBR)</li>
-<li>the BIOS boot partition (GRUB on BIOS&#x2F;GPT only).</li>
-</ul>
-</li>
-<li>The actual boot loader is launched.</li>
-<li>The boot loader then loads an operating system by either chain-loading or directly loading the operating system kernel.</li>
-</ol>
-<h1><span id="uefi启动流程">UEFI启动流程</span></h1><ol>
-<li><p>System switched on, the power-on self-test (POST) is executed.</p>
-</li>
-<li><p>After POST, UEFI initializes the hardware required for booting (disk, keyboard controllers etc.).</p>
-</li>
-<li><p>Firmware reads the boot entries in the NVRAM to determine which EFI application to launch and from where (e.g. from which disk and partition).</p>
-<ul>
-<li>A boot entry could simply be a disk. In this case the firmware looks for an EFI system partition on that disk and tries to find an EFI application in the fallback boot path \EFI\BOOT\BOOTx64.EFI (BOOTIA32.EFI on systems with a IA32 (32-bit) UEFI). This is how UEFI bootable removable media work.</li>
-</ul>
-<blockquote>
-<p><em><strong>NVRAM Non-Volatile Random Access Memory,是非易失性随机访问存储器，指断电后仍能保持数据的一种RAM，对于uefi中NVRAM则是存储在固件ROM中的一段位置。</strong></em></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">if ((conf-&gt;mddev-&gt;recovery_cp &lt; this_sector + sectors) ||</span><br><span class="line">	    (mddev_is_clustered(conf-&gt;mddev) &amp;&amp;</span><br><span class="line">	    md_cluster_ops-&gt;area_resyncing(conf-&gt;mddev, READ, this_sector,</span><br><span class="line">		    this_sector + sectors)))</span><br><span class="line">		choose_first = 1;</span><br><span class="line">	else</span><br><span class="line">		choose_first = 0;</span><br></pre></td></tr></table></figure>
+<p>如果读的起始位置大于同步窗口则选择第一块可读盘作为目标盘（未同步数据可能是脏数据，因此读哪块都可以）；如果盘阵同步不在运行，或是读的其实位置小于同步数据位置，那么盘阵中所有的盘都有可能被选为目标读盘</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">for (disk = 0 ; disk &lt; conf-&gt;raid_disks * 2 ; disk++) &#123;</span><br><span class="line">	sector_t dist;</span><br><span class="line">	sector_t first_bad;</span><br><span class="line">	int bad_sectors;</span><br><span class="line">	unsigned int pending;</span><br><span class="line">	bool nonrot;</span><br></pre></td></tr></table></figure>
+<p>遍历盘阵中的盘，找到符合<code>read_balance</code>条件的盘</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">rdev = rcu_dereference(conf-&gt;mirrors[disk].rdev);</span><br><span class="line">if (r1_bio-&gt;bios[disk] == IO_BLOCKED</span><br><span class="line">    || rdev == NULL</span><br><span class="line">    || test_bit(Faulty, &amp;rdev-&gt;flags))</span><br><span class="line">	continue;</span><br><span class="line">if (!test_bit(In_sync, &amp;rdev-&gt;flags) &amp;&amp;</span><br><span class="line">    rdev-&gt;recovery_offset &lt; this_sector + sectors)</span><br><span class="line">	continue;</span><br><span class="line">if (test_bit(WriteMostly, &amp;rdev-&gt;flags)) &#123;</span><br><span class="line">	/* Don&#x27;t balance among write-mostly, just</span><br><span class="line">	 * use the first as a last resort */</span><br><span class="line">	if (best_dist_disk &lt; 0) &#123;</span><br><span class="line">		if (is_badblock(rdev, this_sector, sectors,</span><br><span class="line">				&amp;first_bad, &amp;bad_sectors)) &#123;</span><br><span class="line">			if (first_bad &lt;= this_sector)</span><br><span class="line">				/* Cannot use this */</span><br><span class="line">				continue;</span><br><span class="line">			best_good_sectors = first_bad - this_sector;</span><br><span class="line">		&#125; else</span><br><span class="line">			best_good_sectors = sectors;</span><br><span class="line">		best_dist_disk = disk;</span><br><span class="line">		best_pending_disk = disk;</span><br><span class="line">	&#125;</span><br><span class="line">	continue;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>跳过不存在及坏盘（<code>IO_BLOCKED</code>待分析）</li>
+<li>如果盘未就绪且同步恢复的位置小于读的起始位置则跳过（未就绪的盘且同步恢复的位置大于读起始位置可读，<em>原因待分析</em>）</li>
+<li>如果是<code>WriteMostly</code>设置<code>best_dist_disk</code>及<code>best_pending_disk</code>（只设置一次，如果盘阵全部是这种盘，则使用第一次扫描到的<code>WriteMostly</code>盘）<blockquote>
+<p>对于坏块处理，如果存在坏块且坏块起始位置小于读的位置则不能作为读盘（读的位置存在坏块），否则计算出读的位置到坏块的实际可用的位置</p>
 </blockquote>
 </li>
-<li><p>Firmware launches the EFI application.</p>
-<ul>
-<li>This could be a boot loader or the Arch kernel itself using EFISTUB.</li>
-<li>It could be some other EFI application such as a UEFI shell or a boot manager like systemd-boot or rEFInd.</li>
-</ul>
-</li>
 </ol>
-<h1><span id="grub2启动流程">GRUB2启动流程</span></h1><h2><span id="bios中的启动流程">BIOS中的启动流程</span></h2><ol>
-<li>BIOS启动</li>
-<li>执行MBR分区代码boot.img、core.img</li>
-<li>设置”prefix root cmdpath”环境变量</li>
-<li>加载”normal.mod”模块</li>
-<li>执行”normal $prefix&#x2F;grub.cfg”命令</li>
-<li>根据菜单内容引导内核启动</li>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">/* This is a reasonable device to use.  It might</span><br><span class="line"> * even be best.</span><br><span class="line"> */</span><br><span class="line">if (is_badblock(rdev, this_sector, sectors,</span><br><span class="line">		&amp;first_bad, &amp;bad_sectors)) &#123;</span><br><span class="line">	if (best_dist &lt; MaxSector)</span><br><span class="line">		/* already have a better device */</span><br><span class="line">		continue;</span><br><span class="line">	if (first_bad &lt;= this_sector) &#123;</span><br><span class="line">		/* cannot read here. If this is the &#x27;primary&#x27;</span><br><span class="line">		 * device, then we must not read beyond</span><br><span class="line">		 * bad_sectors from another device..</span><br><span class="line">		 */</span><br><span class="line">		bad_sectors -= (this_sector - first_bad);</span><br><span class="line">		if (choose_first &amp;&amp; sectors &gt; bad_sectors)</span><br><span class="line">			sectors = bad_sectors;</span><br><span class="line">		if (best_good_sectors &gt; sectors)</span><br><span class="line">			best_good_sectors = sectors;</span><br><span class="line"></span><br><span class="line">	&#125; else &#123;</span><br><span class="line">		sector_t good_sectors = first_bad - this_sector;</span><br><span class="line">		if (good_sectors &gt; best_good_sectors) &#123;</span><br><span class="line">			best_good_sectors = good_sectors;</span><br><span class="line">			best_disk = disk;</span><br><span class="line">		&#125;</span><br><span class="line">		if (choose_first)</span><br><span class="line">			break;</span><br><span class="line">	&#125;</span><br><span class="line">	continue;</span><br><span class="line">&#125; else &#123;</span><br><span class="line">	if ((sectors &gt; best_good_sectors) &amp;&amp; (best_disk &gt;= 0))</span><br><span class="line">		best_disk = -1;</span><br><span class="line">	best_good_sectors = sectors;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>盘存在坏块是做如下处理：</p>
+<ol>
+<li>盘存在坏块，但是前面遍历有可用的盘（<code>best_dist &lt; MaxSector</code>）,则忽略这个坏块盘继续遍历下一块盘</li>
+<li>如果坏块起始位置小于等于读的位置，那么这块盘是不可读，并且记录这块盘从读的起始位置有多少坏块（如果后续有可读盘，这个被丢弃<code>best_good_sectors</code>重新被赋值）</li>
+<li>如果坏块起始位置大于读的位置，那么从读的起始位置到坏块的位置这块区间是可读的<blockquote>
+<p><code>good_sectors &gt; best_good_sectors</code>符合这个条件情况</p>
+<ol>
+<li><code>best_good_sectors == 0</code>这块盘是遍历的第一块盘</li>
+<li><code>best_good_sectors != 0 &amp;&amp; good_sectors &gt; best_good_sectors</code>已经遍历过存在坏块的盘，但是这块盘可读的数据优于上一个遍历的坏块盘</li>
+<li>否则不选用这块盘<br>对于不存在换块的处理，如果前面选择了有坏块的盘作为读盘则取消，重新设置<code>best_good_sectors</code>值</li>
 </ol>
-<h2><span id="uefi中的启动流程">UEFI中的启动流程</span></h2><ol>
-<li><p>UEFI启动</p>
-</li>
-<li><p>执行ESP(EFI System Partition)分区中的UEFI应用（BOOTX64.EFI）</p>
-<blockquote>
-<p>个专门用以安装UEFI应用的分区,ESP分区只能是原生的物理硬盘，<em><strong>不能是LVM或者是RAID</strong></em>，这算是UEFI的缺点。ESP的文件系统格式支持vfat（一般都用FAT32）。</p>
 </blockquote>
 </li>
-<li><p>设置”prefix root cmdpath”环境变量</p>
-</li>
-<li><p>加载”normal.mod”模块</p>
-</li>
-<li><p>执行”normal $prefix&#x2F;grub.cfg”命令</p>
-</li>
-<li><p>根据菜单内容引导内核启动</p>
-</li>
 </ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">nonrot = blk_queue_nonrot(bdev_get_queue(rdev-&gt;bdev));</span><br><span class="line">has_nonrot_disk |= nonrot;</span><br><span class="line">pending = atomic_read(&amp;rdev-&gt;nr_pending);</span><br><span class="line">dist = abs(this_sector - conf-&gt;mirrors[disk].head_position);</span><br><span class="line">if (choose_first) &#123;</span><br><span class="line">	best_disk = disk;</span><br><span class="line">	break;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>获取盘的类型、IO下发次数以及上次操作结束位置到本次读写位置的距离</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">/* Don&#x27;t change to another disk for sequential reads */</span><br><span class="line">if (conf-&gt;mirrors[disk].next_seq_sect == this_sector</span><br><span class="line">    || dist == 0) &#123;</span><br><span class="line">	int opt_iosize = bdev_io_opt(rdev-&gt;bdev) &gt;&gt; 9;</span><br><span class="line">	struct raid1_info *mirror = &amp;conf-&gt;mirrors[disk];</span><br><span class="line"></span><br><span class="line">	best_disk = disk;</span><br><span class="line">	/*</span><br><span class="line">	 * If buffered sequential IO size exceeds optimal</span><br><span class="line">	 * iosize, check if there is idle disk. If yes, choose</span><br><span class="line">	 * the idle disk. read_balance could already choose an</span><br><span class="line">	 * idle disk before noticing it&#x27;s a sequential IO in</span><br><span class="line">	 * this disk. This doesn&#x27;t matter because this disk</span><br><span class="line">	 * will idle, next time it will be utilized after the</span><br><span class="line">	 * first disk has IO size exceeds optimal iosize. In</span><br><span class="line">	 * this way, iosize of the first disk will be optimal</span><br><span class="line">	 * iosize at least. iosize of the second disk might be</span><br><span class="line">	 * small, but not a big deal since when the second disk</span><br><span class="line">	 * starts IO, the first disk is likely still busy.</span><br><span class="line">	 */</span><br><span class="line">	if (nonrot &amp;&amp; opt_iosize &gt; 0 &amp;&amp;</span><br><span class="line">	    mirror-&gt;seq_start != MaxSector &amp;&amp;</span><br><span class="line">	    mirror-&gt;next_seq_sect &gt; opt_iosize &amp;&amp;</span><br><span class="line">	    mirror-&gt;next_seq_sect - opt_iosize &gt;=</span><br><span class="line">	    mirror-&gt;seq_start) &#123;</span><br><span class="line">		choose_next_idle = 1;</span><br><span class="line">		continue;</span><br><span class="line">	&#125;</span><br><span class="line">	break;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">if (choose_next_idle)</span><br><span class="line">	continue;</span><br></pre></td></tr></table></figure>
+<p>如果上次操作的结束位置和本次读写的起始位置相同，则选择这块盘</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">if (min_pending &gt; pending) &#123;</span><br><span class="line">	min_pending = pending;</span><br><span class="line">	best_pending_disk = disk;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">if (dist &lt; best_dist) &#123;</span><br><span class="line">	best_dist = dist;</span><br><span class="line">	best_dist_disk = disk;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>计算盘读写的最小次数以及操作最近的距离</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * If all disks are rotational, choose the closest disk. If any disk is</span><br><span class="line"> * non-rotational, choose the disk with less pending request even the</span><br><span class="line"> * disk is rotational, which might/might not be optimal for raids with</span><br><span class="line"> * mixed ratation/non-rotational disks depending on workload.</span><br><span class="line"> */</span><br><span class="line">if (best_disk == -1) &#123;</span><br><span class="line">	if (has_nonrot_disk || min_pending == 0)</span><br><span class="line">		best_disk = best_pending_disk;</span><br><span class="line">	else</span><br><span class="line">		best_disk = best_dist_disk;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>遍历完后，如果没有找到想要的盘，则判断有SSD或是没有读写的盘，则选用这块盘；否则选用位置最近的盘</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">if (best_disk &gt;= 0) &#123;</span><br><span class="line">	rdev = rcu_dereference(conf-&gt;mirrors[best_disk].rdev);</span><br><span class="line">	if (!rdev)</span><br><span class="line">		goto retry;</span><br><span class="line">	atomic_inc(&amp;rdev-&gt;nr_pending);</span><br><span class="line">	sectors = best_good_sectors;</span><br><span class="line"></span><br><span class="line">	if (conf-&gt;mirrors[best_disk].next_seq_sect != this_sector)</span><br><span class="line">		conf-&gt;mirrors[best_disk].seq_start = this_sector;</span><br><span class="line"></span><br><span class="line">	conf-&gt;mirrors[best_disk].next_seq_sect = this_sector + sectors;</span><br><span class="line">&#125;</span><br><span class="line">rcu_read_unlock();</span><br><span class="line">*max_sectors = sectors;</span><br></pre></td></tr></table></figure>
+<p>选择该盘，更新读写位置</p>
 
       
     </div>
@@ -510,7 +478,7 @@
       
         <div class="post-tags">
           
-            <a href="/tags/BIOS-UEFI/" rel="tag"># BIOS/UEFI</a>
+            <a href="/tags/MD/" rel="tag"># MD</a>
           
         </div>
       
@@ -523,14 +491,18 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
+              <a href="/2022/05/15/RAID1%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90-%E5%90%8C%E6%AD%A5/" rel="next" title="RAID1源码分析~同步">
+                <i class="fa fa-chevron-left"></i> RAID1源码分析~同步
+              </a>
+            
           </div>
 
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2022/05/09/mkisofs-%E5%88%B6%E4%BD%9Cgrub2%E5%8F%AF%E5%BC%95%E5%AF%BC%E7%9A%84ISO%E6%96%87%E4%BB%B6/" rel="prev" title="mkisofs 制作grub2可引导的ISO文件">
-                mkisofs 制作grub2可引导的ISO文件 <i class="fa fa-chevron-right"></i>
+              <a href="/2022/05/21/RAID1%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90-%E5%86%99/" rel="prev" title="RAID1源码分析~写.md">
+                RAID1源码分析~写.md <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -667,7 +639,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">1.</span> <span class="nav-text">基础知识</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link"><span class="nav-number">1.1.</span> <span class="nav-text">MBR</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link"><span class="nav-number">1.1.1.</span> <span class="nav-text">启动代码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link"><span class="nav-number">1.1.2.</span> <span class="nav-text">硬盘分区表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link"><span class="nav-number">1.1.3.</span> <span class="nav-text">主引导扇区的读取流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link"><span class="nav-number">1.2.</span> <span class="nav-text">GPT</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link"><span class="nav-number">1.2.1.</span> <span class="nav-text">特点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link"><span class="nav-number">1.2.2.</span> <span class="nav-text">传统的MBR</span></a></li><li class="nav-item nav-level-3"><a class="nav-link"><span class="nav-number">1.2.3.</span> <span class="nav-text">分区表头（LBA 1）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link"><span class="nav-number">1.2.4.</span> <span class="nav-text">分区表项（LBA 2–33）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">2.</span> <span class="nav-text">BIOS启动流程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">3.</span> <span class="nav-text">UEFI启动流程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">4.</span> <span class="nav-text">GRUB2启动流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link"><span class="nav-number">4.1.</span> <span class="nav-text">BIOS中的启动流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link"><span class="nav-number">4.2.</span> <span class="nav-text">UEFI中的启动流程</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">1.</span> <span class="nav-text">源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link"><span class="nav-number">1.1.</span> <span class="nav-text">read_balance</span></a></li></ol></li></ol></div>
             
 
           </div>
